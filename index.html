@@ -48,8 +48,18 @@ canvas{display:block}
 #filmframe::before{content:'';position:absolute;inset:8px;border:1px solid rgba(255,255,255,.12)}
 
 /* ── Bottom panel ── */
-#panel{width:100%;background:#f5f4f0;border-top:0.5px solid #ddd;flex-shrink:0;overflow-y:auto;max-height:260px}
-#panel-inner{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0;padding:0}
+/* ── Bottom panel ── */
+#panel{width:100%;background:#f5f4f0;border-top:0.5px solid #ddd;flex-shrink:0;overflow:auto;max-height:280px;scrollbar-width:thin;scrollbar-color:#ccc transparent}
+#panel::-webkit-scrollbar{width:6px;height:6px}
+#panel::-webkit-scrollbar-track{background:transparent}
+#panel::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+#panel::-webkit-scrollbar-thumb:hover{background:#aaa}
+#panel::-webkit-scrollbar-corner{background:#f5f4f0}
+#panel-inner{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:0;padding:0;min-width:900px}#panel::-webkit-scrollbar{height:6px}
+#panel::-webkit-scrollbar-track{background:#e8e6e2}
+#panel::-webkit-scrollbar-thumb{background:#bbb;border-radius:3px}
+#panel::-webkit-scrollbar-thumb:hover{background:#999}
+
 .section{padding:10px 14px;border-right:0.5px solid #e8e6e2}
 .section:last-child{border-right:none}
 .sec-title{font-size:10px;font-weight:500;color:#aaa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
