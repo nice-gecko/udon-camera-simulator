@@ -9,7 +9,7 @@
 body{background:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:13px;color:#2c2c2a;overflow:hidden;height:100vh;width:100vw}
 
 /* ── Viewport (fullscreen) ── */
-#viewport{position:fixed;inset:0;background:#111}
+#viewport{position:fixed;inset:0;background:#111;transition:all .2s}
 canvas{display:block;width:100%!important;height:100%!important}
 
 /* ── HUD ── */
@@ -27,8 +27,8 @@ canvas{display:block;width:100%!important;height:100%!important}
 #zoom-btns button:hover{background:rgba(0,0,0,.75)}
 #zoom-val{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateX(100px);color:rgba(255,255,255,.5);font-size:12px;z-index:20;pointer-events:none}
 
-/* ── Floating panel ── */
-#panel{position:fixed;top:14px;right:14px;width:270px;background:rgba(245,244,240,.97);border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.35);z-index:30;user-select:none;max-height:calc(100vh - 28px);overflow-y:auto}
+/* ── Floating panel — default bottom-left, below HUD ── */
+#panel{position:fixed;bottom:14px;left:14px;top:auto;right:auto;width:270px;background:rgba(245,244,240,.97);border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.35);z-index:30;user-select:none;max-height:calc(100vh - 200px);overflow-y:auto}
 #panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 8px;border-bottom:0.5px solid #e0ddd8;cursor:grab;background:rgba(245,244,240,.97);border-radius:10px 10px 0 0;position:sticky;top:0;z-index:1}
 #panel-header:active{cursor:grabbing}
 #panel-title{font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.07em}
@@ -223,14 +223,37 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.005, 500);
 
-// Zoom state
+// Zoom state — viewport size scale
 let zoomScale = 1.0;
 
-function resize(){
-  const w = innerWidth, h = innerHeight;
+function applyZoom(){
+  const vp = document.getElementById('viewport');
+  const w = Math.round(innerWidth * zoomScale);
+  const h = Math.round(innerHeight * zoomScale);
+  const offX = Math.round((innerWidth - w) / 2);
+  const offY = Math.round((innerHeight - h) / 2);
+  vp.style.width  = w + 'px';
+  vp.style.height = h + 'px';
+  vp.style.left   = offX + 'px';
+  vp.style.top    = offY + 'px';
+  vp.style.right  = 'auto';
+  vp.style.bottom = 'auto';
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  document.getElementById('zoom-val').textContent = Math.round(zoomScale * 100) + '%';
+}
+
+function resize(){
+  if(zoomScale === 1.0){
+    const vp = document.getElementById('viewport');
+    vp.style.cssText = 'position:fixed;inset:0;background:#111';
+    renderer.setSize(innerWidth, innerHeight, false);
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+  } else {
+    applyZoom();
+  }
 }
 
 const SENSOR_H = 24;
@@ -239,7 +262,7 @@ function mmToFovH(mm){ return 2*Math.atan(SENSOR_H*1.5/(2*mm))*180/Math.PI; }
 
 // ── Default state ──
 const DEFAULTS = {
-  angle:0, dist:1.5, axElev:0, axPan:0, tilt:0, roll:0,
+  angle:90, dist:1.5, axElev:0, axPan:0, tilt:0, roll:0,
   mm:50, playing:true, direction:1, speed:0.5,
   bg:'sky', bw:6, bd:6, bh:3
 };
@@ -333,7 +356,7 @@ function updateCamera(){
   const cos=Math.cos(orbitRad),sin=Math.sin(orbitRad);
   const crossX=ny*bz-nz*by, crossY=nz*bx-nx*bz, crossZ=nx*by-ny*bx;
   const rx=bx*cos+crossX*sin, ry=by*cos+crossY*sin, rz=bz*cos+crossZ*sin;
-  const effectiveDist = dist / zoomScale;
+  const effectiveDist = dist;
   camera.position.set(TARGET.x+rx*effectiveDist, TARGET.y+ry*effectiveDist, TARGET.z+rz*effectiveDist);
   camera.up.set(-bx*sin+crossX*cos, -by*sin+crossY*cos, -bz*sin+crossZ*cos);
   camera.lookAt(TARGET);
@@ -409,7 +432,10 @@ function applyStateToUI(){
   document.querySelectorAll('#bg-btns button').forEach(b=>b.classList.toggle('on',b.dataset.bg===state.bg));
   document.getElementById('play-btn').textContent=state.playing?'▶ 再生':'⏸ 停止';
   document.getElementById('play-btn').classList.toggle('on',state.playing);
-  zoomScale=1.0; document.getElementById('zoom-val').textContent='100%';
+  zoomScale=1.0;
+  const vp=document.getElementById('viewport');
+  vp.style.cssText='position:fixed;inset:0;background:#111';
+  document.getElementById('zoom-val').textContent='100%';
 }
 document.getElementById('reset-btn').addEventListener('click',()=>{
   state={...DEFAULTS}; buildRoom(); applyStateToUI(); updateCamera();
@@ -417,14 +443,12 @@ document.getElementById('reset-btn').addEventListener('click',()=>{
 
 // ── Zoom ──
 document.getElementById('zoom-in').addEventListener('click',()=>{
-  zoomScale=Math.min(zoomScale*1.25,8);
-  document.getElementById('zoom-val').textContent=Math.round(zoomScale*100)+'%';
-  updateCamera();
+  zoomScale=Math.min(zoomScale*1.25,4);
+  applyZoom();
 });
 document.getElementById('zoom-out').addEventListener('click',()=>{
-  zoomScale=Math.max(zoomScale/1.25,0.1);
-  document.getElementById('zoom-val').textContent=Math.round(zoomScale*100)+'%';
-  updateCamera();
+  zoomScale=Math.max(zoomScale/1.25,0.25);
+  applyZoom();
 });
 
 document.getElementById('rec-btn').addEventListener('click',()=>{
@@ -493,7 +517,9 @@ const panel=document.getElementById('panel');
 const header=document.getElementById('panel-header');
 let dragging=false, dragOX=0, dragOY=0;
 header.addEventListener('mousedown',e=>{
-  dragging=true; dragOX=e.clientX-panel.offsetLeft; dragOY=e.clientY-panel.offsetTop;
+  const rect=panel.getBoundingClientRect();
+  dragging=true; dragOX=e.clientX-rect.left; dragOY=e.clientY-rect.top;
+  panel.style.bottom='auto'; panel.style.top=rect.top+'px'; panel.style.left=rect.left+'px';
   e.preventDefault();
 });
 window.addEventListener('mousemove',e=>{
@@ -506,7 +532,7 @@ window.addEventListener('mousemove',e=>{
 window.addEventListener('mouseup',()=>{ dragging=false; });
 
 // Touch drag
-header.addEventListener('touchstart',e=>{ const t=e.touches[0]; dragging=true; dragOX=t.clientX-panel.offsetLeft; dragOY=t.clientY-panel.offsetTop; },{passive:true});
+header.addEventListener('touchstart',e=>{ const t=e.touches[0]; const rect=panel.getBoundingClientRect(); dragging=true; dragOX=t.clientX-rect.left; dragOY=t.clientY-rect.top; panel.style.bottom='auto'; panel.style.top=rect.top+'px'; panel.style.left=rect.left+'px'; },{passive:true});
 window.addEventListener('touchmove',e=>{ if(!dragging) return; const t=e.touches[0]; let x=t.clientX-dragOX,y=t.clientY-dragOY; x=Math.max(0,Math.min(x,innerWidth-panel.offsetWidth)); y=Math.max(0,Math.min(y,innerHeight-40)); panel.style.left=x+'px'; panel.style.top=y+'px'; panel.style.right='auto'; },{passive:true});
 window.addEventListener('touchend',()=>{ dragging=false; });
 
