@@ -351,8 +351,20 @@ function updateCamera(){
   const axLen=Math.sqrt(axX*axX+axY*axY+axZ*axZ)||1;
   const nx=axX/axLen, ny=axY/axLen, nz=axZ/axLen;
   let bx,by,bz;
-  if(Math.abs(ny)<0.99){ const cx2=ny*0-nz*1,cy2=nz*0-nx*0,cz2=nx*1-ny*0; const cl=Math.sqrt(cx2*cx2+cy2*cy2+cz2*cz2)||1; bx=cx2/cl;by=cy2/cl;bz=cz2/cl; }
-  else { const cx2=ny*1-nz*0,cy2=nz*0-nx*1,cz2=nx*0-ny*0; const cl=Math.sqrt(cx2*cx2+cy2*cy2+cz2*cz2)||1; bx=cx2/cl;by=cy2/cl;bz=cz2/cl; }
+  if(Math.abs(ny)<0.99){
+    // 軸×Y_hat を使わず、Y+(0,1,0)を初期方向とし軸に投影して除いた垂直成分を使う
+    // b = Y - (Y·n)n → 正規化
+    const dot=ny; // Y·n = ny
+    const vx=0-dot*nx, vy=1-dot*ny, vz=0-dot*nz;
+    const vl=Math.sqrt(vx*vx+vy*vy+vz*vz)||1;
+    bx=vx/vl; by=vy/vl; bz=vz/vl;
+  } else {
+    // 軸がほぼY軸 → Z+(0,0,1)を初期方向に
+    const dot=nz;
+    const vx=0-dot*nx, vy=0-dot*ny, vz=1-dot*nz;
+    const vl=Math.sqrt(vx*vx+vy*vy+vz*vz)||1;
+    bx=vx/vl; by=vy/vl; bz=vz/vl;
+  }
   const cos=Math.cos(orbitRad),sin=Math.sin(orbitRad);
   const crossX=ny*bz-nz*by, crossY=nz*bx-nx*bz, crossZ=nx*by-ny*bx;
   const rx=bx*cos+crossX*sin, ry=by*cos+crossY*sin, rz=bz*cos+crossZ*sin;
