@@ -8,9 +8,9 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#111;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:13px;color:#2c2c2a;display:flex;flex-direction:column;height:100vh;overflow:hidden}
 
-/* ── Viewport 16:9固定 ── */
-#viewport{width:100%;position:relative;background:#111}
-#viewport::before{content:'';display:block;padding-top:56.25%}
+/* ── 映像エリア（16:9維持・両サイド黒） ── */
+#video-area{flex:1;min-height:0;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#viewport{position:relative;background:#111;flex-shrink:0}
 #viewport canvas,#viewport #filmframe{position:absolute;top:0;left:0;width:100%;height:100%}
 canvas{display:block}
 #filmframe{position:absolute;inset:0;pointer-events:none;border:3px solid rgba(0,0,0,.35)}
@@ -47,17 +47,20 @@ canvas{display:block}
 #filmframe{position:absolute;inset:0;pointer-events:none;border:3px solid rgba(0,0,0,.35)}
 #filmframe::before{content:'';position:absolute;inset:8px;border:1px solid rgba(255,255,255,.12)}
 
+/* ── Resizer ── */
+#resizer{width:100%;height:10px;background:#2e2e2e;cursor:ns-resize;flex-shrink:0;display:flex;align-items:center;justify-content:center;user-select:none}
+#resizer::before{content:'';width:36px;height:3px;border-radius:2px;background:#555}
+#resizer:hover{background:#3a3a3a}
+#resizer:hover::before{background:#888}
+
 /* ── Bottom panel ── */
-/* ── Bottom panel ── */
-#panel{width:100%;background:#f5f4f0;border-top:0.5px solid #ddd;flex-shrink:0;overflow:auto;max-height:280px;scrollbar-width:thin;scrollbar-color:#ccc transparent}
+#panel{width:100%;background:#f5f4f0;border-top:none;flex-shrink:0;overflow:auto;max-height:280px;scrollbar-width:thin;scrollbar-color:#ccc transparent}
 #panel::-webkit-scrollbar{width:6px;height:6px}
 #panel::-webkit-scrollbar-track{background:transparent}
 #panel::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
 #panel::-webkit-scrollbar-thumb:hover{background:#aaa}
 #panel::-webkit-scrollbar-corner{background:#f5f4f0}
-#panel-inner{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:0;padding:0;min-width:900px}#panel::-webkit-scrollbar{height:6px}
-#panel::-webkit-scrollbar-track{background:#e8e6e2}
-#panel::-webkit-scrollbar-thumb{background:#bbb;border-radius:3px}
+#panel-inner{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:0;padding:0;min-width:900px}
 #panel::-webkit-scrollbar-thumb:hover{background:#999}
 
 .section{padding:10px 14px;border-right:0.5px solid #e8e6e2}
@@ -103,6 +106,7 @@ button.on{background:#2c2c2a;color:#fff;border-color:#2c2c2a}
   <div class="ib-item" id="ib-extras" style="color:#8fc;display:none"></div>
 </div>
 
+<div id="resizer"></div>
 <div id="panel">
   <div id="panel-inner">
 
@@ -550,7 +554,43 @@ async function convertToMp4(chunks){
   }
 }
 
-// ── UI bindings ──
+// ── Resizer drag ──
+const resizer = document.getElementById('resizer');
+const panel   = document.getElementById('panel');
+const videoArea = document.getElementById('video-area');
+let isResizing = false, resizeStartY = 0, resizeStartH = 0;
+
+resizer.addEventListener('mousedown', e=>{
+  isResizing = true;
+  resizeStartY = e.clientY;
+  resizeStartH = panel.offsetHeight;
+  document.body.style.cursor = 'ns-resize';
+  document.body.style.userSelect = 'none';
+});
+resizer.addEventListener('touchstart', e=>{
+  isResizing = true;
+  resizeStartY = e.touches[0].clientY;
+  resizeStartH = panel.offsetHeight;
+},{passive:true});
+
+window.addEventListener('mousemove', e=>{
+  if(!isResizing) return;
+  const dy = resizeStartY - e.clientY; // 上にドラッグ→パネル拡大
+  const newH = Math.min(Math.max(resizeStartH + dy, 60), window.innerHeight * 0.7);
+  panel.style.maxHeight = newH + 'px';
+  resize();
+});
+window.addEventListener('touchmove', e=>{
+  if(!isResizing) return;
+  const dy = resizeStartY - e.touches[0].clientY;
+  const newH = Math.min(Math.max(resizeStartH + dy, 60), window.innerHeight * 0.7);
+  panel.style.maxHeight = newH + 'px';
+  resize();
+},{passive:true});
+
+window.addEventListener('mouseup', ()=>{ isResizing=false; document.body.style.cursor=''; document.body.style.userSelect=''; });
+window.addEventListener('touchend', ()=>{ isResizing=false; });
+
 document.getElementById('sl-angle').addEventListener('input',e=>{ state.angle=parseFloat(e.target.value); updateCamera(); });
 document.getElementById('in-dist').addEventListener('change',e=>{ const v=Math.max(0.2,parseFloat(e.target.value)||1.5); state.dist=v; e.target.value=v.toFixed(1); updateCamera(); });
 document.getElementById('sl-speed').addEventListener('input',e=>{ state.speed=parseFloat(e.target.value); document.getElementById('v-speed').textContent=state.speed.toFixed(2); });
