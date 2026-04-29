@@ -367,6 +367,9 @@ function posLabel(deg,axElev){
 
 buildRoom(); updateCamera();
 
+// ── Recording state (must be declared before animate) ──
+let isRecording=false, mediaRecorder=null, recChunks=[];
+
 // ── Animate ──
 let lastT=0;
 function animate(t){
@@ -423,9 +426,6 @@ document.getElementById('zoom-out').addEventListener('click',()=>{
   document.getElementById('zoom-val').textContent=Math.round(zoomScale*100)+'%';
   updateCamera();
 });
-
-// ── MP4 Recording ──
-let isRecording=false, mediaRecorder=null, recChunks=[];
 
 document.getElementById('rec-btn').addEventListener('click',()=>{
   if(isRecording){ stopRecording(); return; }
