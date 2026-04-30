@@ -6,111 +6,116 @@
 <title>うどん桶 カメラ軌道シミュレーター</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:13px;color:#2c2c2a;overflow:hidden;height:100vh;width:100vw}
+body{background:#111;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:13px;color:#2c2c2a;display:flex;flex-direction:column;height:100vh;overflow:hidden}
 
-/* ── Viewport (fullscreen) ── */
-#viewport{position:fixed;inset:0;background:#111}
-canvas{display:block;width:100%!important;height:100%!important}
+/* ── 映像エリア：55vh・内部に16:9キャンバスをセンタリング ── */
+#viewport{width:100%;height:55vh;position:relative;background:#000;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+#viewport canvas{display:block;flex-shrink:0;position:relative;z-index:1}
+/* 16:9ガイドフレーム：canvasに重ねる */
+#filmframe{position:absolute;pointer-events:none;z-index:2;border:1.5px solid rgba(255,255,255,.5);box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+#filmframe::before{content:'';position:absolute;inset:0;border:1px solid rgba(255,255,255,.2)}
 
-/* ── HUD ── */
-#hud{position:fixed;top:14px;left:14px;background:rgba(0,0,0,.65);color:#f5e8c0;border-radius:8px;padding:8px 13px;font-size:12px;line-height:2.0;pointer-events:none;z-index:10}
+/* ── Info bar ── */
+#infobar{
+  width:100%;background:#484848;color:#aaa;
+  font-size:11px;padding:4px 10px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum";
+  white-space:nowrap;overflow:hidden;
+}
+#infobar .ib-item{display:flex;align-items:center;gap:3px;flex:1;justify-content:center}
+#infobar .ib-item:first-child{justify-content:flex-start}
+#infobar .ib-item:last-child{justify-content:flex-end}
+#infobar .ib-val{color:#e8e8e8;font-weight:500;display:inline-block;min-width:2.8em;text-align:right}
+#infobar .ib-sep{color:#666;margin:0 1px;user-select:none;flex-shrink:0}
+#infobar .ib-lbl{color:#888}
+#ib-pos{min-width:7em;text-align:center}
+@media(max-width:480px){
+  #infobar{font-size:9px;padding:4px 6px}
+  #infobar .ib-lbl{font-size:8px}
+  #infobar .ib-val{min-width:2em;font-size:9px}
+  #ib-pos{min-width:4.5em;font-size:8.5px}
+  #infobar .ib-sep{margin:0}
+}
 #hud-angle{font-size:22px;font-weight:500;color:#f0c857;line-height:1.2;margin-bottom:2px}
 #hud-lens{color:#aee4ff}
 #hud-fov{font-size:11px;color:#999}
 #hud-extras{color:#b8f0b8;font-size:11px}
-#filmframe{position:fixed;inset:0;pointer-events:none;border:3px solid rgba(0,0,0,.35);z-index:5}
-#filmframe::before{content:'';position:absolute;inset:8px;border:1px solid rgba(255,255,255,.12);border-radius:2px}
 
-/* ── Zoom buttons ── */
-#zoom-btns{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:20}
-#zoom-btns button{width:40px;height:40px;border-radius:50%;border:0.5px solid rgba(255,255,255,.25);background:rgba(0,0,0,.55);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
-#zoom-btns button:hover{background:rgba(0,0,0,.75)}
-#zoom-val{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateX(100px);color:rgba(255,255,255,.5);font-size:12px;z-index:20;pointer-events:none}
 
-/* ── Floating panel ── */
-#panel{position:fixed;top:14px;right:14px;width:270px;background:rgba(245,244,240,.97);border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.35);z-index:30;user-select:none;max-height:calc(100vh - 28px);overflow-y:auto}
-#panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 8px;border-bottom:0.5px solid #e0ddd8;cursor:grab;background:rgba(245,244,240,.97);border-radius:10px 10px 0 0;position:sticky;top:0;z-index:1}
-#panel-header:active{cursor:grabbing}
-#panel-title{font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.07em}
-#panel-toggle{font-size:16px;background:none;border:none;color:#aaa;cursor:pointer;padding:0 2px;line-height:1}
-#panel-body{padding:10px 12px 14px}
-.section{margin-bottom:12px}
-.section:last-child{margin-bottom:0}
+
+/* ── Bottom panel ── */
+#panel{width:100%;background:#f5f4f0;border-top:none;flex-shrink:0;overflow:auto;max-height:calc(45vh - 30px);scrollbar-width:thin;scrollbar-color:#ccc transparent}
+#panel::-webkit-scrollbar{width:6px;height:6px}
+#panel::-webkit-scrollbar-track{background:transparent}
+#panel::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+#panel::-webkit-scrollbar-thumb:hover{background:#aaa}
+#panel::-webkit-scrollbar-corner{background:#f5f4f0}
+#panel-inner{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:0;padding:0;min-width:900px}
+#panel::-webkit-scrollbar-thumb:hover{background:#999}
+
+.section{padding:10px 14px;border-right:0.5px solid #e8e6e2}
+.section:last-child{border-right:none}
 .sec-title{font-size:10px;font-weight:500;color:#aaa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
-.row{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
 .row:last-child{margin-bottom:0}
-.lbl{font-size:11px;color:#666;min-width:62px;flex-shrink:0}
-.row input[type=range]{flex:1;min-width:0;accent-color:#3a7bd5;cursor:pointer;height:3px}
-.val{font-size:11px;font-weight:500;color:#2c2c2a;min-width:40px;text-align:right;flex-shrink:0}
-.row input[type=number]{width:56px;font-size:11px;padding:3px 6px;border:0.5px solid #ccc;border-radius:5px;background:#fff;color:#2c2c2a;text-align:right}
-.btn-group{display:flex;flex-wrap:wrap;gap:4px}
+.lbl{font-size:11px;color:#666;min-width:60px;flex-shrink:0}
+.row input[type=range]{flex:1;min-width:0;accent-color:#3a7bd5;cursor:pointer}
+.val{font-size:11px;font-weight:500;color:#2c2c2a;min-width:38px;text-align:right;flex-shrink:0}
+.row input[type=number]{width:54px;font-size:11px;padding:3px 5px;border:0.5px solid #ccc;border-radius:4px;background:#fff;color:#2c2c2a;text-align:right}
+.btn-group{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px}
 button{font-size:11px;padding:4px 9px;border-radius:5px;border:0.5px solid #ccc;background:#fff;color:#2c2c2a;cursor:pointer;transition:background .12s}
-button:hover{background:#f0eeea;border-color:#aaa}
+button:hover{background:#e8e6e2}
 button.on{background:#2c2c2a;color:#fff;border-color:#2c2c2a}
-#play-btn{min-width:64px}
-.hint{font-size:10px;color:#bbb;margin:2px 0 5px 62px;line-height:1.4}
-.divider{height:0.5px;background:#eee;margin:7px 0}
-
-/* ── Recording indicator ── */
-#rec-indicator{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(200,30,30,.85);color:#fff;border-radius:6px;padding:5px 14px;font-size:12px;z-index:50;display:none;pointer-events:none}
+.hint{font-size:10px;color:#bbb;line-height:1.4;margin:2px 0 4px 60px}
+.divider{height:0.5px;background:#e8e6e2;margin:6px 0}
+#action-row{display:flex;gap:6px;margin-top:6px}
+#action-row button{flex:1;padding:5px 0}
+#rec-btn.recording{background:#c01818;color:#fff;border-color:#c01818}
+#rec-indicator{display:none;font-size:10px;color:#c01818;margin-top:3px;text-align:center}
 #rec-indicator.active{display:block}
-
-/* ── Action buttons (bottom right) ── */
-#action-btns{position:fixed;bottom:20px;right:14px;display:flex;flex-direction:column;gap:7px;z-index:20}
-#action-btns button{font-size:11px;padding:6px 12px;border-radius:7px;border:0.5px solid rgba(255,255,255,.2);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;white-space:nowrap}
-#action-btns button:hover{background:rgba(0,0,0,.75)}
-#rec-btn.recording{background:rgba(180,20,20,.8);border-color:rgba(255,100,100,.4)}
 </style>
 </head>
 <body>
 
-<div id="viewport"><canvas id="c"></canvas></div>
-<div id="filmframe"></div>
-
-<div id="hud">
-  <div id="hud-angle">0°</div>
-  <div id="hud-pos">軸基点から</div>
-  <div id="hud-lens">50mm &nbsp;|&nbsp; 1.5m</div>
-  <div id="hud-extras"></div>
-  <div id="hud-fov"></div>
+<div id="viewport">
+  <canvas id="c"></canvas>
+  <div id="filmframe"></div>
 </div>
 
-<div id="zoom-btns">
-  <button id="zoom-out" title="縮小">−</button>
-  <button id="zoom-in"  title="拡大">+</button>
+<div id="infobar">
+  <div class="ib-item"><span class="ib-lbl">角度</span><span class="ib-val" id="ib-angle">90°</span></div>
+  <span class="ib-sep">|</span>
+  <div class="ib-item"><span id="ib-pos">正面から</span></div>
+  <span class="ib-sep">|</span>
+  <div class="ib-item"><span class="ib-lbl">レンズ</span><span class="ib-val" id="ib-lens">50mm</span></div>
+  <span class="ib-sep">|</span>
+  <div class="ib-item"><span class="ib-lbl">距離</span><span class="ib-val" id="ib-dist">1.5m</span></div>
+  <span class="ib-sep">|</span>
+  <div class="ib-item"><span class="ib-lbl">vFOV</span><span class="ib-val" id="ib-fov">27.0°</span></div>
+  <span class="ib-sep" id="ib-extras-sep" style="display:none">|</span>
+  <div class="ib-item" id="ib-extras" style="color:#8fc;display:none"></div>
 </div>
-<div id="zoom-val">100%</div>
 
-<div id="rec-indicator">● REC</div>
-
-<div id="action-btns">
-  <button id="reset-btn">リセット</button>
-  <button id="rec-btn">MP4録画</button>
-</div>
-
-<!-- Floating panel -->
 <div id="panel">
-  <div id="panel-header">
-    <span id="panel-title">カメラコントロール</span>
-    <button id="panel-toggle">−</button>
-  </div>
-  <div id="panel-body">
+  <div id="panel-inner">
 
     <div class="section">
       <div class="sec-title">軌道</div>
       <div class="row">
         <span class="lbl">公転角度</span>
-        <input type="range" id="sl-angle" min="0" max="360" step="0.5" value="0">
-        <span class="val" id="v-angle">0°</span>
+        <input type="range" id="sl-angle" min="0" max="360" step="0.5" value="90">
+        <span class="val" id="v-angle">90°</span>
       </div>
       <div class="row">
         <span class="lbl">距離 (m)</span>
-        <input type="number" id="in-dist" min="0.2" max="30" step="0.1" value="1.5">
-        <span class="val">m</span>
+        <input type="range" id="sl-dist" min="0.2" max="10" step="0.1" value="1.5">
+        <span class="val" id="v-dist">1.5m</span>
       </div>
       <div class="divider"></div>
       <div class="row">
-        <span class="lbl">自動回転</span>
         <button id="play-btn" class="on">&#9654; 再生</button>
         <button id="rev-btn">逆転</button>
       </div>
@@ -122,7 +127,7 @@ button.on{background:#2c2c2a;color:#fff;border-color:#2c2c2a}
     </div>
 
     <div class="section">
-      <div class="sec-title">回転軸・カメラの向き</div>
+      <div class="sec-title">回転軸・カメラ</div>
       <div class="row">
         <span class="lbl">軸の仰角</span>
         <input type="range" id="sl-axelev" min="0" max="90" step="1" value="0">
@@ -134,7 +139,6 @@ button.on{background:#2c2c2a;color:#fff;border-color:#2c2c2a}
         <input type="range" id="sl-axpan" min="-180" max="180" step="1" value="0">
         <span class="val" id="v-axpan">0°</span>
       </div>
-      <div class="hint">0°=正面側 / 90°=右側面側</div>
       <div class="row">
         <span class="lbl">チルト</span>
         <input type="range" id="sl-tilt" min="-90" max="90" step="1" value="0">
@@ -159,7 +163,7 @@ button.on{background:#2c2c2a;color:#fff;border-color:#2c2c2a}
         <button data-mm="135">135mm</button>
         <button data-mm="200">200mm</button>
       </div>
-      <div class="row" style="margin-top:7px">
+      <div class="row">
         <span class="lbl">カスタム</span>
         <input type="number" id="in-mm" min="8" max="800" step="1" value="50">
         <span class="val">mm</span>
@@ -193,10 +197,10 @@ button.on{background:#2c2c2a;color:#fff;border-color:#2c2c2a}
     </div>
 
     <div class="section">
-      <div class="sec-title">録画設定</div>
+      <div class="sec-title">出力・操作</div>
       <div class="row">
         <span class="lbl">解像度</span>
-        <select id="sel-res" style="font-size:11px;padding:3px 6px;border:0.5px solid #ccc;border-radius:5px;background:#fff;flex:1">
+        <select id="sel-res" style="font-size:11px;padding:3px 5px;border:0.5px solid #ccc;border-radius:4px;background:#fff;flex:1">
           <option value="720">720p</option>
           <option value="1080" selected>1080p</option>
         </select>
@@ -206,14 +210,19 @@ button.on{background:#2c2c2a;color:#fff;border-color:#2c2c2a}
         <input type="number" id="in-laps" min="1" max="10" step="1" value="1">
         <span class="val">周</span>
       </div>
+      <div id="action-row">
+        <button id="reset-btn">リセット</button>
+        <button id="rec-btn">MP4出力</button>
+      </div>
+      <div id="rec-indicator">● REC 録画中... 完了後に変換します</div>
     </div>
 
   </div>
 </div>
 
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// ── Renderer ──
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, preserveDrawingBuffer:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -221,25 +230,37 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.005, 500);
-
-// Zoom state
-let zoomScale = 1.0;
+const camera = new THREE.PerspectiveCamera(40, 16/9, 0.005, 500);
 
 function resize(){
-  const w = innerWidth, h = innerHeight;
+  const vp = document.getElementById('viewport');
+  const availW = vp.clientWidth;
+  const availH = vp.clientHeight;
+  // 16:9を維持しながらコンテナに収まる最大サイズ
+  let w, h;
+  if(availW / availH >= 16/9){
+    h = availH;
+    w = Math.round(h * 16/9);
+  } else {
+    w = availW;
+    h = Math.round(w * 9/16);
+  }
+  // Canvasを16:9サイズに設定
   renderer.setSize(w, h, false);
-  camera.aspect = w / h;
+  camera.aspect = 16/9;
   camera.updateProjectionMatrix();
+  // filmframeをcanvasにぴったり合わせる
+  const ff = document.getElementById('filmframe');
+  ff.style.width  = w + 'px';
+  ff.style.height = h + 'px';
 }
 
 const SENSOR_H = 24;
 function mmToFovV(mm){ return 2*Math.atan(SENSOR_H/(2*mm))*180/Math.PI; }
 function mmToFovH(mm){ return 2*Math.atan(SENSOR_H*1.5/(2*mm))*180/Math.PI; }
 
-// ── Default state ──
 const DEFAULTS = {
-  angle:0, dist:1.5, axElev:0, axPan:0, tilt:0, roll:0,
+  angle:90, dist:1.5, axElev:0, axPan:0, tilt:0, roll:0,
   mm:50, playing:true, direction:1, speed:0.5,
   bg:'sky', bw:6, bd:6, bh:3
 };
@@ -253,10 +274,11 @@ sunLight.position.set(5,10,6);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.set(1024,1024);
 sunLight.shadow.camera.left=-10; sunLight.shadow.camera.right=10;
-sunLight.shadow.camera.top=10; sunLight.shadow.camera.bottom=-10;
+sunLight.shadow.camera.top=10;  sunLight.shadow.camera.bottom=-10;
 sunLight.shadow.camera.far=40;
 scene.add(sunLight);
-scene.add(new THREE.DirectionalLight(0xb0ccff, 0.35)).position.set(-5,3,-4);
+const fillLight = new THREE.DirectionalLight(0xb0ccff, 0.35);
+fillLight.position.set(-5,3,-4); scene.add(fillLight);
 
 // ── Room ──
 let bgMeshes = [];
@@ -275,7 +297,7 @@ function buildRoom(){
   scene.background = new THREE.Color(p.fog);
   scene.fog = new THREE.FogExp2(p.fog, p.fogD);
   ambLight.color.set(p.amb); sunLight.color.set(p.sun);
-  const hw=bw/2,hd=bd/2,fy=-0.36;
+  const hw=bw/2, hd=bd/2, fy=-0.36;
   const mk=(geo,col,rcv=true)=>{
     const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:col,side:THREE.FrontSide}));
     m.receiveShadow=rcv; scene.add(m); bgMeshes.push(m); return m;
@@ -304,7 +326,7 @@ const bucketGroup = new THREE.Group(); scene.add(bucketGroup);
 const woodM=new THREE.MeshStandardMaterial({color:0x8b6344,roughness:0.85,metalness:0});
 const darkM=new THREE.MeshStandardMaterial({color:0x5a3e28,roughness:0.9,metalness:0});
 const metalM=new THREE.MeshStandardMaterial({color:0x1a1a1a,metalness:0.85,roughness:0.25});
-const body=new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.32,0.28,32,1,true),woodM); body.position.y=0.14; body.castShadow=true; bucketGroup.add(body);
+const bodyM=new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.32,0.28,32,1,true),woodM); bodyM.position.y=0.14; bodyM.castShadow=true; bucketGroup.add(bodyM);
 const bot=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.32,0.025,32),darkM); bot.position.y=0.013; bucketGroup.add(bot);
 [{y:0.28,r:0.39},{y:0.01,r:0.38}].forEach(({y,r})=>{ const rg=new THREE.Mesh(new THREE.TorusGeometry(r,0.018,8,48),darkM); rg.position.y=y; rg.rotation.x=Math.PI/2; bucketGroup.add(rg); });
 for(let i=0;i<24;i++){ const a=(i/24)*Math.PI*2; const sv=new THREE.Mesh(new THREE.BoxGeometry(0.007,0.3,0.007),darkM); sv.position.set(Math.sin(a)*0.356,0.14,Math.cos(a)*0.356); sv.rotation.y=-a; sv.castShadow=true; bucketGroup.add(sv); }
@@ -318,154 +340,185 @@ const glassMesh=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.05,1.5),glassM); glas
 const legM=new THREE.MeshStandardMaterial({color:0xaaaaaa,metalness:0.75,roughness:0.25});
 [[0.85,0.6],[0.85,-0.6],[-0.85,0.6],[-0.85,-0.6]].forEach(([x,z])=>{ const lg=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,0.31,10),legM); lg.position.set(x,-0.19,z); scene.add(lg); });
 
-// ── Camera orbit (Rodrigues) ──
+// ── Camera ──
+// 回転軸 n まわりにカメラを回す（Rodrigues回転）
+// axElev=0, axPan=0 → n=X軸(1,0,0) → Y-Z平面上を縦一周
+// angle=0→真上(Y+) angle=90→正面(Z+) angle=180→真裏(Y-) angle=270→背面(Z-)
 const TARGET = new THREE.Vector3(0, 0.14, 0);
 
 function updateCamera(){
   const {angle,dist,axElev,axPan,tilt,roll,mm} = state;
-  const orbitRad=(angle*Math.PI)/180, elevRad=(axElev*Math.PI)/180, panRad=(axPan*Math.PI)/180;
-  const axX=Math.cos(elevRad)*Math.cos(panRad), axY=Math.sin(elevRad), axZ=-Math.cos(elevRad)*Math.sin(panRad);
-  const axLen=Math.sqrt(axX*axX+axY*axY+axZ*axZ)||1;
-  const nx=axX/axLen, ny=axY/axLen, nz=axZ/axLen;
-  let bx,by,bz;
-  if(Math.abs(ny)<0.99){ const cx2=ny*0-nz*1,cy2=nz*0-nx*0,cz2=nx*1-ny*0; const cl=Math.sqrt(cx2*cx2+cy2*cy2+cz2*cz2)||1; bx=cx2/cl;by=cy2/cl;bz=cz2/cl; }
-  else { const cx2=ny*1-nz*0,cy2=nz*0-nx*1,cz2=nx*0-ny*0; const cl=Math.sqrt(cx2*cx2+cy2*cy2+cz2*cz2)||1; bx=cx2/cl;by=cy2/cl;bz=cz2/cl; }
-  const cos=Math.cos(orbitRad),sin=Math.sin(orbitRad);
-  const crossX=ny*bz-nz*by, crossY=nz*bx-nx*bz, crossZ=nx*by-ny*bx;
-  const rx=bx*cos+crossX*sin, ry=by*cos+crossY*sin, rz=bz*cos+crossZ*sin;
-  const effectiveDist = dist / zoomScale;
-  camera.position.set(TARGET.x+rx*effectiveDist, TARGET.y+ry*effectiveDist, TARGET.z+rz*effectiveDist);
-  camera.up.set(-bx*sin+crossX*cos, -by*sin+crossY*cos, -bz*sin+crossZ*cos);
-  camera.lookAt(TARGET);
-  if(tilt!==0) camera.rotateX(-(tilt*Math.PI)/180);
-  if(roll!==0) camera.rotateZ((roll*Math.PI)/180);
-  camera.fov=mmToFovV(mm); camera.updateProjectionMatrix();
+  const theta = (angle * Math.PI) / 180;
+  const elev  = (axElev * Math.PI) / 180;
+  const pan   = (axPan  * Math.PI) / 180;
 
-  const deg=((angle%360)+360)%360;
-  document.getElementById('hud-angle').textContent=Math.round(deg)+'°';
-  document.getElementById('hud-pos').textContent=posLabel(deg,axElev);
-  document.getElementById('hud-lens').textContent=mm+'mm  |  '+dist.toFixed(1)+'m';
-  const extras=[];
-  if(axElev!==0) extras.push('軸仰角 +'+axElev+'°');
-  if(axPan!==0)  extras.push('軸向き '+(axPan>0?'+':'')+axPan+'°');
-  if(tilt!==0)   extras.push('チルト '+(tilt>0?'+':'')+tilt+'°');
-  if(roll!==0)   extras.push('ロール '+(roll>0?'+':'')+roll+'°');
-  document.getElementById('hud-extras').textContent=extras.join('   ');
-  document.getElementById('hud-fov').textContent='vFOV '+mmToFovV(mm).toFixed(1)+'°   hFOV '+mmToFovH(mm).toFixed(1)+'°';
-  document.getElementById('v-angle').textContent=Math.round(deg)+'°';
-  document.getElementById('sl-angle').value=deg;
+  // 回転軸 n
+  const nx = Math.cos(elev)*Math.cos(pan);
+  const ny = Math.sin(elev);
+  const nz = -Math.cos(elev)*Math.sin(pan);
+
+  // 軸に垂直な初期ベクトル b
+  // n に Y+(0,1,0) の n垂直成分を使う。n≒Y軸なら Z+(0,0,1)を使う
+  let bx,by,bz;
+  if(Math.abs(ny) < 0.999){
+    const dot = ny; // Y·n
+    const vx=-dot*nx, vy=1.0-dot*ny, vz=-dot*nz;
+    const vl = Math.sqrt(vx*vx+vy*vy+vz*vz)||1;
+    bx=vx/vl; by=vy/vl; bz=vz/vl;
+  } else {
+    const dot = nz; // Z·n
+    const vx=-dot*nx, vy=-dot*ny, vz=1.0-dot*nz;
+    const vl = Math.sqrt(vx*vx+vy*vy+vz*vz)||1;
+    bx=vx/vl; by=vy/vl; bz=vz/vl;
+  }
+
+  // Rodrigues: r = b*cos(θ) + (n×b)*sin(θ)  [n·b=0なので第3項消える]
+  const c = Math.cos(theta), s = Math.sin(theta);
+  const cx = ny*bz - nz*by;
+  const cy = nz*bx - nx*bz;
+  const cz = nx*by - ny*bx;
+  const rx = bx*c + cx*s;
+  const ry = by*c + cy*s;
+  const rz = bz*c + cz*s;
+
+  camera.position.set(TARGET.x + rx*dist, TARGET.y + ry*dist, TARGET.z + rz*dist);
+  // up = 接線方向 = -b*sin(θ) + (n×b)*cos(θ)
+  camera.up.set(-bx*s+cx*c, -by*s+cy*c, -bz*s+cz*c);
+  camera.lookAt(TARGET);
+  if(tilt !== 0) camera.rotateX(-(tilt*Math.PI)/180);
+  if(roll !== 0) camera.rotateZ( (roll*Math.PI)/180);
+  camera.fov = mmToFovV(mm);
+  camera.updateProjectionMatrix();
+
+  // infobar更新
+  const deg = ((angle%360)+360)%360;
+  document.getElementById('ib-angle').textContent = Math.round(deg)+'°';
+  document.getElementById('ib-pos').textContent = posLabel(deg, axElev);
+  document.getElementById('ib-lens').textContent = mm+'mm';
+  document.getElementById('ib-dist').textContent = dist.toFixed(1)+'m';
+  document.getElementById('ib-fov').textContent = mmToFovV(mm).toFixed(1)+'°';
+  const ex=[];
+  if(axElev!==0) ex.push('軸仰角 +'+axElev+'°');
+  if(axPan !==0) ex.push('軸向き '+(axPan>0?'+':'')+axPan+'°');
+  if(tilt  !==0) ex.push('チルト '+(tilt>0?'+':'')+tilt+'°');
+  if(roll  !==0) ex.push('ロール '+(roll>0?'+':'')+roll+'°');
+  const ibEx = document.getElementById('ib-extras');
+  const ibSep = document.getElementById('ib-extras-sep');
+  if(ex.length){
+    ibEx.textContent = ex.join('  ');
+    ibEx.style.display='flex';
+    ibSep.style.display='inline';
+  } else {
+    ibEx.style.display='none';
+    ibSep.style.display='none';
+  }
+  document.getElementById('v-angle').textContent = Math.round(deg)+'°';
+  document.getElementById('sl-angle').value = deg;
 }
 
-function posLabel(deg,axElev){
+function posLabel(deg, axElev){
   if(axElev>=85) return '水平旋回 ('+Math.round(deg)+'°)';
-  if(deg<8||deg>=352) return '軸基点 (0°)';
-  if(deg<98) return '前方 ('+Math.round(deg)+'°)';
-  if(deg<188) return '裏側 ('+Math.round(deg)+'°)';
-  if(deg<278) return '後方 ('+Math.round(deg)+'°)';
-  return '上方 ('+Math.round(deg)+'°)';
+  if(deg<8||deg>=352) return '真上から (0°)';
+  if(deg<82)  return '前方斜め上 ('+Math.round(deg)+'°)';
+  if(deg<98)  return '正面から (90°)';
+  if(deg<172) return '前方斜め下 ('+Math.round(deg)+'°)';
+  if(deg<188) return '真裏から (180°)';
+  if(deg<262) return '後方斜め下 ('+Math.round(deg)+'°)';
+  if(deg<278) return '背面から (270°)';
+  return '後方斜め上 ('+Math.round(deg)+'°)';
 }
 
 buildRoom(); updateCamera();
 
+// ── Recording ──
+let isRecording = false, mediaRecorder = null, recChunks = [];
+
 // ── Animate ──
-let lastT=0;
+let lastT = 0;
 function animate(t){
   requestAnimationFrame(animate);
-  const dt=Math.min(t-lastT,50); lastT=t;
+  const dt = Math.min(t-lastT, 50); lastT = t;
   if(state.playing && !isRecording){
-    state.angle=(state.angle+state.direction*state.speed*dt/16.67);
+    state.angle = (state.angle + state.direction*state.speed*dt/16.67);
     if(state.angle>=360) state.angle-=360;
     if(state.angle<0)    state.angle+=360;
   }
-  waterMesh.material.opacity=0.80+Math.sin(t*0.002)*0.05;
+  waterMesh.material.opacity = 0.80 + Math.sin(t*0.002)*0.05;
   updateCamera();
-  renderer.render(scene,camera);
+  renderer.render(scene, camera);
 }
-resize(); window.addEventListener('resize',resize); animate(0);
+resize(); window.addEventListener('resize', resize); animate(0);
 
 // ── Reset ──
 function applyStateToUI(){
-  document.getElementById('sl-angle').value=state.angle;
-  document.getElementById('v-angle').textContent=Math.round(state.angle)+'°';
-  document.getElementById('in-dist').value=state.dist.toFixed(1);
-  document.getElementById('sl-speed').value=state.speed;
-  document.getElementById('v-speed').textContent=state.speed.toFixed(2);
-  document.getElementById('sl-axelev').value=state.axElev;
-  document.getElementById('v-axelev').textContent='+'+state.axElev+'°';
-  document.getElementById('sl-axpan').value=state.axPan;
-  document.getElementById('v-axpan').textContent=(state.axPan>0?'+':'')+state.axPan+'°';
-  document.getElementById('sl-tilt').value=state.tilt;
-  document.getElementById('v-tilt').textContent=(state.tilt>0?'+':'')+state.tilt+'°';
-  document.getElementById('sl-roll').value=state.roll;
-  document.getElementById('v-roll').textContent=(state.roll>0?'+':'')+state.roll+'°';
-  document.getElementById('in-mm').value=state.mm;
+  document.getElementById('sl-angle').value = state.angle;
+  document.getElementById('v-angle').textContent = Math.round(state.angle)+'°';
+  document.getElementById('v-dist').textContent = state.dist.toFixed(1)+'m';
+  document.getElementById('sl-dist').value = Math.min(state.dist, 10);
+  document.getElementById('sl-speed').value = state.speed;
+  document.getElementById('v-speed').textContent = state.speed.toFixed(2);
+  document.getElementById('sl-axelev').value = state.axElev;
+  document.getElementById('v-axelev').textContent = state.axElev+'°';
+  document.getElementById('sl-axpan').value = state.axPan;
+  document.getElementById('v-axpan').textContent = (state.axPan>0?'+':'')+state.axPan+'°';
+  document.getElementById('sl-tilt').value = state.tilt;
+  document.getElementById('v-tilt').textContent = (state.tilt>0?'+':'')+state.tilt+'°';
+  document.getElementById('sl-roll').value = state.roll;
+  document.getElementById('v-roll').textContent = (state.roll>0?'+':'')+state.roll+'°';
+  document.getElementById('in-mm').value = state.mm;
   document.querySelectorAll('#lens-btns button').forEach(b=>b.classList.toggle('on',parseInt(b.dataset.mm)===state.mm));
   document.getElementById('sl-bw').value=state.bw; document.getElementById('v-bw').textContent=state.bw.toFixed(1);
   document.getElementById('sl-bd').value=state.bd; document.getElementById('v-bd').textContent=state.bd.toFixed(1);
   document.getElementById('sl-bh').value=state.bh; document.getElementById('v-bh').textContent=state.bh.toFixed(1);
   document.querySelectorAll('#bg-btns button').forEach(b=>b.classList.toggle('on',b.dataset.bg===state.bg));
-  document.getElementById('play-btn').textContent=state.playing?'▶ 再生':'⏸ 停止';
-  document.getElementById('play-btn').classList.toggle('on',state.playing);
-  zoomScale=1.0; document.getElementById('zoom-val').textContent='100%';
+  document.getElementById('play-btn').textContent = state.playing?'▶ 再生':'⏸ 停止';
+  document.getElementById('play-btn').classList.toggle('on', state.playing);
 }
 document.getElementById('reset-btn').addEventListener('click',()=>{
   state={...DEFAULTS}; buildRoom(); applyStateToUI(); updateCamera();
 });
 
-// ── Zoom ──
-document.getElementById('zoom-in').addEventListener('click',()=>{
-  zoomScale=Math.min(zoomScale*1.25,8);
-  document.getElementById('zoom-val').textContent=Math.round(zoomScale*100)+'%';
-  updateCamera();
-});
-document.getElementById('zoom-out').addEventListener('click',()=>{
-  zoomScale=Math.max(zoomScale/1.25,0.1);
-  document.getElementById('zoom-val').textContent=Math.round(zoomScale*100)+'%';
-  updateCamera();
-});
-
-// ── MP4 Recording ──
-let isRecording=false, mediaRecorder=null, recChunks=[];
-
+// ── MP4 Recording (WebM録画 → ffmpeg.wasmでMP4変換) ──
 document.getElementById('rec-btn').addEventListener('click',()=>{
   if(isRecording){ stopRecording(); return; }
   startRecording();
 });
 
+async function loadFFmpeg(){
+  if(window._ffmpeg) return window._ffmpeg;
+  const {createFFmpeg, fetchFile} = FFmpeg;
+  const ff = createFFmpeg({log:false});
+  await ff.load();
+  window._ffmpeg = ff;
+  window._fetchFile = fetchFile;
+  return ff;
+}
+
 function startRecording(){
-  const resH=parseInt(document.getElementById('sel-res').value);
-  const resW=Math.round(resH*16/9);
-  const laps=parseInt(document.getElementById('in-laps').value)||1;
-  const totalDeg=360*laps;
-  const degPerFrame=state.speed*(state.direction||1);
-
-  // オフスクリーンキャンバスを使わず、既存canvasをそのまま使う
-  const stream=canvas.captureStream(30);
-  const opts=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t))||'video/webm';
-  mediaRecorder=new MediaRecorder(stream,{mimeType:opts,videoBitsPerSecond:8000000});
-  recChunks=[];
-  mediaRecorder.ondataavailable=e=>{ if(e.data.size>0) recChunks.push(e.data); };
-  mediaRecorder.onstop=()=>{ exportVideo(recChunks, opts); };
+  const laps = parseInt(document.getElementById('in-laps').value)||1;
+  const totalDeg = 360*laps;
+  const opts = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t))||'video/webm';
+  const stream = canvas.captureStream(30);
+  mediaRecorder = new MediaRecorder(stream,{mimeType:opts,videoBitsPerSecond:10000000});
+  recChunks = [];
+  mediaRecorder.ondataavailable = e=>{ if(e.data.size>0) recChunks.push(e.data); };
+  mediaRecorder.onstop = ()=>{ convertToMp4(recChunks); };
   mediaRecorder.start(100);
-
-  isRecording=true;
+  isRecording = true;
   document.getElementById('rec-btn').textContent='■ 停止';
   document.getElementById('rec-btn').classList.add('recording');
+  document.getElementById('rec-indicator').textContent='● REC 録画中...';
   document.getElementById('rec-indicator').classList.add('active');
-
-  // 自動で指定周回分回してから停止
-  const startAngle=state.angle;
-  let accumulated=0;
-  const prevPlaying=state.playing;
-  state.playing=false;
-
+  const prevPlaying = state.playing;
+  state.playing = false;
+  let accumulated = 0;
   const recStep=()=>{
     if(!isRecording) return;
-    state.angle=(state.angle+Math.abs(state.speed)*state.direction+360)%360;
-    accumulated+=Math.abs(state.speed);
+    state.angle = (state.angle + Math.abs(state.speed)*state.direction + 360)%360;
+    accumulated += Math.abs(state.speed);
     updateCamera();
-    renderer.render(scene,camera);
-    if(accumulated<totalDeg){ requestAnimationFrame(recStep); }
+    renderer.render(scene, camera);
+    if(accumulated < totalDeg){ requestAnimationFrame(recStep); }
     else{ stopRecording(); state.playing=prevPlaying; }
   };
   requestAnimationFrame(recStep);
@@ -473,58 +526,52 @@ function startRecording(){
 
 function stopRecording(){
   if(!isRecording) return;
-  isRecording=false;
+  isRecording = false;
   if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop();
-  document.getElementById('rec-btn').textContent='MP4録画';
+  document.getElementById('rec-btn').textContent='MP4出力';
   document.getElementById('rec-btn').classList.remove('recording');
-  document.getElementById('rec-indicator').classList.remove('active');
 }
 
-function exportVideo(chunks, mimeType){
-  const blob=new Blob(chunks,{type:mimeType});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='udon_camera_'+(new Date().toISOString().slice(0,16).replace(/:/g,'-'))+'.webm';
-  a.click(); URL.revokeObjectURL(url);
+async function convertToMp4(chunks){
+  document.getElementById('rec-indicator').textContent='⏳ MP4に変換中...';
+  try {
+    const ff = await loadFFmpeg();
+    const blob = new Blob(chunks,{type:'video/webm'});
+    const buf = await blob.arrayBuffer();
+    ff.FS('writeFile','input.webm', new Uint8Array(buf));
+    await ff.run('-i','input.webm','-c:v','libx264','-preset','fast','-crf','18','-movflags','+faststart','-pix_fmt','yuv420p','output.mp4');
+    const data = ff.FS('readFile','output.mp4');
+    const mp4blob = new Blob([data.buffer],{type:'video/mp4'});
+    const url = URL.createObjectURL(mp4blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='udon_camera_'+(new Date().toISOString().slice(0,16).replace(/:/g,'-'))+'.mp4';
+    a.click(); URL.revokeObjectURL(url);
+    document.getElementById('rec-indicator').textContent='✓ MP4ダウンロード完了';
+    setTimeout(()=>document.getElementById('rec-indicator').classList.remove('active'),3000);
+  } catch(e){
+    console.error(e);
+    // ffmpeg失敗時はwebmをそのまま出力
+    const blob = new Blob(chunks,{type:'video/webm'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='udon_camera_'+(new Date().toISOString().slice(0,16).replace(/:/g,'-'))+'.webm';
+    a.click(); URL.revokeObjectURL(url);
+    document.getElementById('rec-indicator').textContent='※ webm形式で出力しました';
+    setTimeout(()=>document.getElementById('rec-indicator').classList.remove('active'),4000);
+  }
 }
 
-// ── Floating panel drag ──
-const panel=document.getElementById('panel');
-const header=document.getElementById('panel-header');
-let dragging=false, dragOX=0, dragOY=0;
-header.addEventListener('mousedown',e=>{
-  dragging=true; dragOX=e.clientX-panel.offsetLeft; dragOY=e.clientY-panel.offsetTop;
-  e.preventDefault();
-});
-window.addEventListener('mousemove',e=>{
-  if(!dragging) return;
-  let x=e.clientX-dragOX, y=e.clientY-dragOY;
-  x=Math.max(0,Math.min(x,innerWidth-panel.offsetWidth));
-  y=Math.max(0,Math.min(y,innerHeight-40));
-  panel.style.left=x+'px'; panel.style.top=y+'px'; panel.style.right='auto';
-});
-window.addEventListener('mouseup',()=>{ dragging=false; });
-
-// Touch drag
-header.addEventListener('touchstart',e=>{ const t=e.touches[0]; dragging=true; dragOX=t.clientX-panel.offsetLeft; dragOY=t.clientY-panel.offsetTop; },{passive:true});
-window.addEventListener('touchmove',e=>{ if(!dragging) return; const t=e.touches[0]; let x=t.clientX-dragOX,y=t.clientY-dragOY; x=Math.max(0,Math.min(x,innerWidth-panel.offsetWidth)); y=Math.max(0,Math.min(y,innerHeight-40)); panel.style.left=x+'px'; panel.style.top=y+'px'; panel.style.right='auto'; },{passive:true});
-window.addEventListener('touchend',()=>{ dragging=false; });
-
-// Panel collapse
-let panelOpen=true;
-document.getElementById('panel-toggle').addEventListener('click',()=>{
-  panelOpen=!panelOpen;
-  document.getElementById('panel-body').style.display=panelOpen?'block':'none';
-  document.getElementById('panel-toggle').textContent=panelOpen?'−':'+';
-});
-
-// ── UI bindings ──
 document.getElementById('sl-angle').addEventListener('input',e=>{ state.angle=parseFloat(e.target.value); updateCamera(); });
-document.getElementById('in-dist').addEventListener('change',e=>{ const v=Math.max(0.2,parseFloat(e.target.value)||1.5); state.dist=v; e.target.value=v.toFixed(1); updateCamera(); });
+document.getElementById('sl-dist').addEventListener('input',e=>{
+  const v=parseFloat(e.target.value);
+  state.dist=v;
+  document.getElementById('v-dist').textContent=v.toFixed(1)+'m';
+  updateCamera();
+});
 document.getElementById('sl-speed').addEventListener('input',e=>{ state.speed=parseFloat(e.target.value); document.getElementById('v-speed').textContent=state.speed.toFixed(2); });
 document.getElementById('play-btn').addEventListener('click',()=>{ state.playing=!state.playing; document.getElementById('play-btn').textContent=state.playing?'▶ 再生':'⏸ 停止'; document.getElementById('play-btn').classList.toggle('on',state.playing); });
 document.getElementById('rev-btn').addEventListener('click',()=>{ state.direction*=-1; document.getElementById('rev-btn').classList.toggle('on',state.direction===-1); });
-document.getElementById('sl-axelev').addEventListener('input',e=>{ state.axElev=parseFloat(e.target.value); document.getElementById('v-axelev').textContent='+'+state.axElev+'°'; updateCamera(); });
+document.getElementById('sl-axelev').addEventListener('input',e=>{ state.axElev=parseFloat(e.target.value); document.getElementById('v-axelev').textContent=state.axElev+'°'; updateCamera(); });
 document.getElementById('sl-axpan').addEventListener('input',e=>{ state.axPan=parseFloat(e.target.value); document.getElementById('v-axpan').textContent=(state.axPan>0?'+':'')+state.axPan+'°'; updateCamera(); });
 document.getElementById('sl-tilt').addEventListener('input',e=>{ state.tilt=parseFloat(e.target.value); document.getElementById('v-tilt').textContent=(state.tilt>0?'+':'')+state.tilt+'°'; updateCamera(); });
 document.getElementById('sl-roll').addEventListener('input',e=>{ state.roll=parseFloat(e.target.value); document.getElementById('v-roll').textContent=(state.roll>0?'+':'')+state.roll+'°'; updateCamera(); });
