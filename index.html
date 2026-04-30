@@ -8,11 +8,12 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#111;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:13px;color:#2c2c2a;display:flex;flex-direction:column;height:100vh;overflow:hidden}
 
-/* ── 映像エリア 16:9・高さ55vh固定 ── */
-#viewport{width:100%;height:55vh;position:relative;background:#111;flex-shrink:0;overflow:hidden}
-#viewport canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
-#filmframe{position:absolute;inset:0;pointer-events:none;border:3px solid rgba(0,0,0,.35)}
-#filmframe::before{content:'';position:absolute;inset:8px;border:1px solid rgba(255,255,255,.12)}
+/* ── 映像エリア：55vh・内部に16:9キャンバスをセンタリング ── */
+#viewport{width:100%;height:55vh;position:relative;background:#000;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+#viewport canvas{display:block;flex-shrink:0;position:relative;z-index:1}
+/* 16:9ガイドフレーム：canvasに重ねる */
+#filmframe{position:absolute;pointer-events:none;z-index:2;border:1.5px solid rgba(255,255,255,.5);box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+#filmframe::before{content:'';position:absolute;inset:0;border:1px solid rgba(255,255,255,.2)}
 
 /* ── Info bar ── */
 #infobar{
@@ -234,11 +235,25 @@ const camera = new THREE.PerspectiveCamera(40, 16/9, 0.005, 500);
 
 function resize(){
   const vp = document.getElementById('viewport');
-  const w = vp.clientWidth;
-  const h = vp.clientHeight;
+  const availW = vp.clientWidth;
+  const availH = vp.clientHeight;
+  // 16:9を維持しながらコンテナに収まる最大サイズ
+  let w, h;
+  if(availW / availH >= 16/9){
+    h = availH;
+    w = Math.round(h * 16/9);
+  } else {
+    w = availW;
+    h = Math.round(w * 9/16);
+  }
+  // Canvasを16:9サイズに設定
   renderer.setSize(w, h, false);
-  camera.aspect = w / h;
+  camera.aspect = 16/9;
   camera.updateProjectionMatrix();
+  // filmframeをcanvasにぴったり合わせる
+  const ff = document.getElementById('filmframe');
+  ff.style.width  = w + 'px';
+  ff.style.height = h + 'px';
 }
 
 const SENSOR_H = 24;
